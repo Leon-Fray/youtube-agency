@@ -1,25 +1,4 @@
-I want to build a YouTube agency manager. Where I assign roles and tasks to my employees, this is the structure I have written out so far. Am I missing anything?
-YouTube agency manager 
-User
-->Name
-->Email
-->Password
--role
-->editor
-->writer
-->researcher
-->blender artist 
--Project
-->Summary
-->Scope
-->Script
-->Art style 
-->Video
-->Edit notes
-->Deadline
-
-
-  ==============================================================
+==============================================================
 YOUTUBE AGENCY MANAGER - STRUCTURE & SCOPE
 ==============================================================
 
@@ -46,7 +25,6 @@ USER
   timezone ............ (opt) string  (useful for remote teams)
   permission_level .... (req) {admin, manager, member}
   status .............. (req) {active, invited, deactivated}
-  hourly_rate ......... (opt) decimal
   created_at .......... timestamp
 
 PERMISSION LEVELS (what a user can DO in the app)
@@ -71,14 +49,13 @@ SKILL ROLES (what a user IS - job function)
 
 
 ==============================================================
-2. CHANNELS / CLIENTS
+2. CHANNELS 
 ==============================================================
 *Admin decides who the channel information is visible to, otherwise the user would just see their project and tasks 
 CHANNEL 
   id .................. [PK]
   name ................ (req)
   youtube_url ......... (opt)
-  client_name ......... (opt) if agency works for outside clients
   brand_notes ......... (opt) tone of voice, do/don't list
   default_art_style ... (opt)
   status .............. {active, paused, archived}
@@ -137,7 +114,6 @@ TASK
   depends_on_task_id .. [FK] -> TASK (opt) e.g. editing can't
                         start until script is approved
   revision_count ...... integer, default 0
-  pay_amount .......... (opt) per-task payment
   created_at / updated_at / completed_at
 
 TASK STATUS
@@ -211,15 +187,11 @@ NOTIFICATION
 
 
 ==============================================================
-7. TIME, PAYMENT & AUDIT (phase 2)
+7. TIME & AUDIT (phase 2)
 ==============================================================
 
 TIME_ENTRY
   id, user_id, task_id, started_at, ended_at, minutes, note
-
-PAYMENT
-  id, user_id, task_id (opt), amount, currency,
-  status {pending, approved, paid}, paid_at
 
 ACTIVITY_LOG  (who did what, when)
   id, user_id, action, entity_type, entity_id, timestamp,
@@ -264,16 +236,14 @@ ACTIVITY_LOG  (who did what, when)
 ==============================================================
 
   [ ] Can a task be assigned to someone without the matching
-      skill role? (warn vs. block)
+      skill role? (warn vs. block) No, warn them 
   [ ] Who approves work at each stage? (manager only, or
-      channel owner too?)
-  [ ] Can members see ALL projects or only assigned ones?
-  [ ] Are dependencies enforced (locked) or just visual?
+      channel owner too?) Manager or Admin
+  [ ] Can members see ALL projects or only assigned ones? Only assigned ones
+  [ ] Are dependencies enforced (locked) or just visual? Yes they are locked 
   [ ] What happens on a missed deadline? (notify, escalate,
-      auto-flag)
-  [ ] Max revision rounds before it's flagged?
-  [ ] Do clients get their own login (view/approve only)?
-  [ ] Are payments tracked in-app or just recorded?
+      auto-flag) Notify 
+  [ ] Max revision rounds before it's flagged? 5 
 
 
 ==============================================================
@@ -284,9 +254,8 @@ ACTIVITY_LOG  (who did what, when)
             Assets (links), Comments, Basic dashboard
   Phase 2 : Notifications, Task templates, Dependencies,
             Channels, Kanban/calendar views
-  Phase 3 : Time tracking, Payments, Activity log,
-            Client portal, Integrations (Drive, Slack,
-            YouTube API)
+  Phase 3 : Time tracking, Activity log,
+            Integrations (Drive, Slack, YouTube API)
 
   Suggested stack: Next.js + Supabase (auth, Postgres, storage)
   or any framework + Postgres. Use an auth provider rather than
