@@ -1,0 +1,293 @@
+I want to build a YouTube agency manager. Where I assign roles and tasks to my employees, this is the structure I have written out so far. Am I missing anything?
+YouTube agency manager 
+User
+->Name
+->Email
+->Password
+-role
+->editor
+->writer
+->researcher
+->blender artist 
+-Project
+->Summary
+->Scope
+->Script
+->Art style 
+->Video
+->Edit notes
+->Deadline
+
+
+  ==============================================================
+YOUTUBE AGENCY MANAGER - STRUCTURE & SCOPE
+==============================================================
+
+Purpose: Assign roles and tasks to employees, track projects
+from idea to published video, and manage feedback/revisions.
+
+Legend:
+  [PK] primary key      [FK] foreign key
+  (req) required        (opt) optional
+  {enum} fixed set of allowed values
+
+
+==============================================================
+1. USERS & ACCESS
+==============================================================
+
+USER
+  id .................. [PK] uuid
+  name ................ (req) string
+  email ............... (req) string, unique
+  password_hash ....... (req) string  (NEVER store plain text;
+                        or use an auth provider and drop this)
+  avatar_url .......... (opt)
+  timezone ............ (opt) string  (useful for remote teams)
+  permission_level .... (req) {admin, manager, member}
+  status .............. (req) {active, invited, deactivated}
+  hourly_rate ......... (opt) decimal
+  created_at .......... timestamp
+
+PERMISSION LEVELS (what a user can DO in the app)
+  admin ..... everything: Manage users, roles, delete anything
+  manager ... create projects, assign tasks, review/approve work,
+              see all projects
+  member .... see assigned projects/tasks, update own task status,
+              comment, upload assets
+
+SKILL ROLES (what a user IS - job function)
+  ROLE
+    id ............ [PK]
+    name .......... (req) {script_writer, researcher, editor,
+                     blender_artist, thumbnail_designer,
+                     voiceover, animator, creative_director}
+                     (keep as a table so you can add more later)
+
+  USER_ROLE  (a person can hold multiple roles)
+    user_id ....... [FK] -> USER
+    role_id ....... [FK] -> ROLE
+    is_primary .... boolean
+
+
+==============================================================
+2. CHANNELS / CLIENTS
+==============================================================
+*Admin decides who the channel information is visible to, otherwise the user would just see their project and tasks 
+CHANNEL 
+  id .................. [PK]
+  name ................ (req)
+  youtube_url ......... (opt)
+  client_name ......... (opt) if agency works for outside clients
+  brand_notes ......... (opt) tone of voice, do/don't list
+  default_art_style ... (opt)
+  status .............. {active, paused, archived}
+
+
+==============================================================
+3. PROJECTS  (one video = one project)
+==============================================================
+
+PROJECT
+  id .................. [PK]
+  channel_id .......... [FK] -> CHANNEL
+  title ............... (req) working title
+  summary ............. (req) 1-3 sentence pitch
+  scope ............... (req) what is/isn't included
+  target_length ....... (opt) e.g. 12 min
+  art_style ........... (opt) text or link to reference board
+  status .............. (req) see PROJECT STATUS below
+  priority ............ {low, normal, high, urgent}
+  deadline ............ (req) date
+  publish_date ........ (opt) scheduled upload
+
+
+PROJECT STATUS (workflow)
+  idea -> research -> scripting -> production ->
+  editing -> review -> revisions -> approved -> published
+  (+ on_hold, cancelled)
+
+PROJECT_MEMBER  (who is on this project)
+  project_id ......... [FK] -> PROJECT
+  user_id ............ [FK] -> USER
+  role_id ............ [FK] -> ROLE  (role they play HERE)
+
+NOTE: Script, Video, and Edit Notes from your original list are
+NOT single fields. They live as ASSETS (section 5) and TASKS
+(section 4) so they can have versions, owners, and feedback.
+
+
+==============================================================
+4. TASKS  (the thing you actually assign)
+==============================================================
+
+TASK
+  id .................. [PK]
+  project_id .......... [FK] -> PROJECT
+  title ............... (req)  e.g. "Write script draft 1"
+  description ......... (opt)
+  required_role_id .... [FK] -> ROLE  (who is qualified)
+  assignee_id ......... [FK] -> USER   (opt until assigned)
+  assigned_by ......... [FK] -> USER
+  status .............. (req) see TASK STATUS below
+  priority ............ {low, normal, high, urgent}
+  due_date ............ (req)
+  estimated_hours ..... (opt)
+  actual_hours ........ (opt)
+  depends_on_task_id .. [FK] -> TASK (opt) e.g. editing can't
+                        start until script is approved
+  revision_count ...... integer, default 0
+  pay_amount .......... (opt) per-task payment
+  created_at / updated_at / completed_at
+
+TASK STATUS
+  backlog -> assigned -> in_progress -> in_review ->
+  revisions_requested -> done
+  (+ blocked)
+
+DEFAULT TASK TEMPLATE (auto-created per new project)
+  1. Research topic ............ researcher
+  2. Write script .............. writer
+  3. Script review/approval .... manager
+  4. Voiceover ................. voiceover
+  5. 3D / Blender assets ....... blender_artist
+  6. Video edit ................ editor
+  7. Thumbnail ................. thumbnail_designer
+  8. Final review .............. manager
+  9. Upload & schedule ......... manager
+
+CHECKLIST_ITEM  (optional sub-steps inside a task)
+  id, task_id [FK], text, is_done
+
+
+==============================================================
+5. ASSETS / FILES  (versioned deliverables)
+==============================================================
+
+ASSET
+  id .................. [PK]
+  project_id .......... [FK] -> PROJECT
+  task_id ............. [FK] -> TASK (opt)
+  type ................ {script, research_doc, reference,
+                        voiceover, blender_render, footage,
+                        rough_cut, final_video, thumbnail,
+                        edit_notes, other}
+  title ............... (req)
+  url ................. (req) link to Drive / Frame.io /
+                        Dropbox / S3  (store LINKS, not video
+                        files, at least at first)
+  version ............. integer (v1, v2, v3...)
+  is_current .......... boolean
+  uploaded_by ......... [FK] -> USER
+  uploaded_at ......... timestamp
+
+
+==============================================================
+6. FEEDBACK & COMMUNICATION
+==============================================================
+
+COMMENT
+  id .................. [PK]
+  author_id ........... [FK] -> USER
+  project_id .......... [FK] -> PROJECT
+  task_id ............. [FK] -> TASK (opt)
+  asset_id ............ [FK] -> ASSET (opt)
+  parent_comment_id ... [FK] -> COMMENT (opt, for threads)
+  body ................ (req)
+  video_timestamp ..... (opt) seconds, for "at 02:14 fix this"
+  is_resolved ......... boolean
+  created_at
+
+NOTIFICATION
+  id .................. [PK]
+  user_id ............. [FK] -> USER
+  type ................ {task_assigned, task_due_soon,
+                        task_overdue, review_requested,
+                        revisions_requested, comment_mention,
+                        project_status_changed}
+  reference_type/id ... what it points to
+  is_read ............. boolean
+  created_at
+
+
+==============================================================
+7. TIME, PAYMENT & AUDIT (phase 2)
+==============================================================
+
+TIME_ENTRY
+  id, user_id, task_id, started_at, ended_at, minutes, note
+
+PAYMENT
+  id, user_id, task_id (opt), amount, currency,
+  status {pending, approved, paid}, paid_at
+
+ACTIVITY_LOG  (who did what, when)
+  id, user_id, action, entity_type, entity_id, timestamp,
+  old_value, new_value
+
+
+==============================================================
+8. RELATIONSHIPS (summary)
+==============================================================
+
+  CHANNEL 1 ---- * PROJECT
+  PROJECT 1 ---- * TASK
+  PROJECT 1 ---- * ASSET
+  PROJECT * ---- * USER   (via PROJECT_MEMBER)
+  USER    * ---- * ROLE   (via USER_ROLE)
+  TASK    * ---- 1 USER   (assignee)
+  TASK    * ---- 1 ROLE   (required role)
+  TASK    1 ---- * COMMENT
+  ASSET   1 ---- * COMMENT
+  USER    1 ---- * NOTIFICATION
+
+
+==============================================================
+9. PAGES / SCREENS TO BUILD
+==============================================================
+
+  - Login / accept invite
+  - Dashboard (my tasks, due soon, awaiting my review)
+  - Projects list (filter by channel, status, deadline)
+  - Project detail (summary, scope, tasks, assets, team,
+    comments, timeline)
+  - Task board (kanban by status) + calendar view
+  - Task detail (description, checklist, files, comments)
+  - Team page (users, roles, workload per person)
+  - Channels page
+  - Notifications
+  - Settings / admin (users, roles, permissions, templates)
+
+
+==============================================================
+10. BUSINESS RULES TO DECIDE
+==============================================================
+
+  [ ] Can a task be assigned to someone without the matching
+      skill role? (warn vs. block)
+  [ ] Who approves work at each stage? (manager only, or
+      channel owner too?)
+  [ ] Can members see ALL projects or only assigned ones?
+  [ ] Are dependencies enforced (locked) or just visual?
+  [ ] What happens on a missed deadline? (notify, escalate,
+      auto-flag)
+  [ ] Max revision rounds before it's flagged?
+  [ ] Do clients get their own login (view/approve only)?
+  [ ] Are payments tracked in-app or just recorded?
+
+
+==============================================================
+11. BUILD ORDER (suggested)
+==============================================================
+
+  MVP     : Users, Roles, Projects, Tasks, Status workflow,
+            Assets (links), Comments, Basic dashboard
+  Phase 2 : Notifications, Task templates, Dependencies,
+            Channels, Kanban/calendar views
+  Phase 3 : Time tracking, Payments, Activity log,
+            Client portal, Integrations (Drive, Slack,
+            YouTube API)
+
+  Suggested stack: Next.js + Supabase (auth, Postgres, storage)
+  or any framework + Postgres. Use an auth provider rather than
+  building password handling yourself.
